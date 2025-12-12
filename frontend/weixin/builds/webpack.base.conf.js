@@ -21,7 +21,14 @@ module.exports = {
             {
                 test: /\.mjs$/,
                 include: /node_modules/,
-                type: 'javascript/auto'
+                type: 'javascript/auto',
+                use: {
+                    loader: 'babel-loader',
+                    options: {
+                        presets: ['@babel/preset-env'],
+                        plugins: ['@babel/plugin-proposal-optional-chaining', '@babel/plugin-proposal-nullish-coalescing-operator']
+                    }
+                }
             },
             {
                 test: /\.vue$/,
