@@ -10,14 +10,19 @@ module.exports = {
         main: './src/main.ts'
     },
     resolve: {
+        extensions: ['.mjs', '.ts', '.js', '.vue', '.json'],
         alias: {
             '@': path.resolve(__dirname, '../src/'),
             'vue': 'vue/dist/vue.esm-bundler.js'
-        },
-        extensions: ['*', '.js', '.ts', '.vue', '.json']
+        }
     },
     module: {
         rules: [
+            {
+                test: /\.mjs$/,
+                include: /node_modules/,
+                type: 'javascript/auto'
+            },
             {
                 test: /\.vue$/,
                 loader: 'vue-loader',
