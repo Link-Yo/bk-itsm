@@ -33,6 +33,7 @@ import urllib.parse
 import urllib.request
 
 from django.http import HttpResponse, HttpResponseRedirect
+from urllib.parse import urlparse
 
 from common.log import logger
 from . import settings as weixin_settings
@@ -198,13 +199,51 @@ class WeixinAccount(WeixinAccountSingleton):
             # 'qr_code': data.get('qr_code', ''),
             # 'email': data.get('email', ''),
         }
-
-    def get_callback_url(self, request):
+    
+    @staticmethod
+    def get_callback_url(request):
         """
-        获取实际访问的URL
+        获取实际访问的URL，并进行安全验证防止开放重定向
         """
         callback_url = request.GET.get('c_url') or weixin_settings.WEIXIN_SITE_URL
-        return callback_url
+
+        parsed = urlparse(callback_url)
+        
+        # 情况1：相对路径（没有 scheme 和 netloc）
+        if not parsed.scheme and not parsed.netloc:
+            # 相对路径直接允许，无需额外校验
+            logger.info("检测到相对路径: %s", callback_url)
+            return callback_url
+
+        # 需要校验域名是否为当前应用的域名
+        if parsed.scheme or parsed.netloc:
+            # 获取当前请求的域名
+            current_host = request.get_host()
+            callback_host = parsed.netloc
+            
+            # 校验域名是否匹配
+            if callback_host != current_host:
+                logger.warning(
+                    "检测到跨域重定向: %s (当前域名: %s, 目标域名: %s), 将重定向到默认页面",
+                    callback_url,
+                    current_host,
+                    callback_host
+                )
+                return weixin_settings.WEIXIN_SITE_URL
+            
+            # 校验协议是否为 http/https
+            if parsed.scheme not in ['http', 'https']:
+                logger.warning(
+                    "检测到非法协议: %s (协议: %s), 将重定向到默认页面",
+                    callback_url,
+                    parsed.scheme
+                )
+                return weixin_settings.WEIXIN_SITE_URL
+            
+            logger.info("完整路径校验通过: %s", callback_url)
+            return callback_url
+        
+        return weixin_settings.WEIXIN_SITE_URL
 
     def login(self, request):
         """
@@ -239,4 +278,5 @@ class WeixinAccount(WeixinAccountSingleton):
 
         # 跳转到用户实际访问URL
         callback_url = self.get_callback_url(request)
+        logger.info("跳转到用户实际访问URL: %s" % callback_url)
         return HttpResponseRedirect(callback_url)
