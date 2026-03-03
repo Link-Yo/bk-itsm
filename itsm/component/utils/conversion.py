@@ -60,7 +60,17 @@ def params_type_conversion(params, schema):
             if result is not None:
                 params[i] = result
     if schema["type"] == "number":
-        return int(params) if params else schema["default"]
+        if params:
+            try:
+                return int(params)
+            except (ValueError, TypeError):
+                return 0
+        default = schema.get("default", 0)
+        try:
+            return int(default)
+        except (ValueError, TypeError):
+            return 0
+    
     if schema["type"] == "boolean":
         if params:
             return True
